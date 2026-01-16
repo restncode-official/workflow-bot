@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; max-width: 1200px; margin: 0 auto; background: #f4f4f4; }
+        h1 { text-align: center; margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        h2 { text-align: center; color: #333; font-size: 1.2rem; }
+        .error { color: red; text-align: center; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Workflow Analytics</h1>
+    <p class="error" id="errorMsg"></p>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Projects Overview</h2>
+            <div class="chart-container">
+                <canvas id="projectChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Top Users</h2>
+            <div class="chart-container">
+                <canvas id="userChart"></canvas>
+            </div>
+        </div>
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Activity Timeline (Daily)</h2>
+            <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const toHours = seconds => (seconds / 3600).toFixed(2);
+
+        async function fetchData(endpoint) {
+            const res = await fetch(endpoint);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            return await res.json();
+        }
+
+        async function loadDashboard() {
+            try {
+                const [projects, users, timeline] = await Promise.all([
+                    fetchData('/api/workflow/stats'),
+                    fetchData('/api/workflow/leaderboard'),
+                    fetchData('/api/workflow/timeline')
+                ]);
+
+                // 1. Projects Chart (Donut)
+                new Chart(document.getElementById('projectChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: projects.map(d => d.projectName || 'Unknown'),
+                        datasets: [{
+                            data: projects.map(d => toHours(d.totalSeconds)),
+                            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                        }]
+                    },
+                    options: { maintainAspectRatio: false }
+                });
+
+                // 2. Users Chart (Bar)
+                new Chart(document.getElementById('userChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: users.map(d => d.userId), // TODO: Resolve real names?
+                        datasets: [{
+                            label: 'Hours',
+                            data: users.map(d => toHours(d.totalSeconds)),
+                            backgroundColor: '#36A2EB'
+                        }]
+                    },
+									options: {
+                        maintainAspectRatio: false,
+                        indexAxis: 'y'
+                    }
+                });
+
+                // 3. Timeline Chart (Line)
+                new Chart(document.getElementById('timelineChart'), {
+                    type: 'line',
+                    data: {
+                        labels: timeline.map(d => d.date),
+                        datasets: [{
+                            label: 'Total Hours Worked',
+                            data: timeline.map(d => toHours(d.totalSeconds)),
+                            borderColor: '#4BC0C0',
+                            tension: 0.1,
+                            fill: true
+                        }]
+                    },
+                    options: { maintainAspectRatio: false }
+                });
+
+            } catch (err) {
+                const el = document.getElementById('errorMsg');
+                el.innerText = "Error loading data: " + err.message;
+                el.style.display = 'block';
+                console.error(err);
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
