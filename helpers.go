@@ -1,6 +1,9 @@
 package main
 
 import (
+	"strconv"
+
+	"github.com/disgoorg/disgo/discord"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -36,4 +39,13 @@ func CalculateTotalUserTime(app core.App, userID string) (float64, error) {
 		One(&result)
 
 	return result.TotalSeconds, err
+}
+
+// parseSnowflake converts a string to a Discord snowflake ID
+func parseSnowflake(s string) (discord.Snowflake, error) {
+	id, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return discord.Snowflake(id), nil
 }

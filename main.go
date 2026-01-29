@@ -22,6 +22,9 @@ const (
 	DiscordTokenEnv = "DISCORD_TOKEN"
 )
 
+// Global Discord client (set after bot starts)
+var discordClient bot.Client
+
 type ProjectStat struct {
 	ProjectName  string  `json:"projectName" db:"projectName"`
 	TotalSeconds float64 `json:"totalSeconds" db:"totalSeconds"`
@@ -29,6 +32,7 @@ type ProjectStat struct {
 
 type UserStat struct {
 	UserID       string  `json:"userId" db:"user_id"`
+	UserName     string  `json:"userName"`
 	TotalSeconds float64 `json:"totalSeconds" db:"totalSeconds"`
 }
 
@@ -92,6 +96,27 @@ func main() {
 			if err != nil {
 				return e.JSON(500, map[string]string{"error": err.Error()})
 			}
+
+			// Populate user names from Discord
+			if discordClient != nil {
+				for i := range stats {
+					if userID, err := parseSnowflake(stats[i].UserID); err == nil {
+						if user, err := discordClient.Rest().GetUser(userID); err == nil {
+							stats[i].UserName = user.Username
+						} else {
+							stats[i].UserName = stats[i].UserID // Fallback to ID
+						}
+					} else {
+						stats[i].UserName = stats[i].UserID // Fallback to ID
+					}
+				}
+			} else {
+				// If Discord client is not available, use user IDs
+				for i := range stats {
+					stats[i].UserName = stats[i].UserID
+				}
+			}
+
 			return e.JSON(200, stats)
 		})
 
@@ -146,6 +171,9 @@ func startDiscordBot(app core.App, token string) {
 		log.Printf("Error creating Discord client: %v", err)
 		return
 	}
+
+	// Store client globally for API access
+	discordClient = client
 
 	if err = client.OpenGateway(context.Background()); err != nil {
 		log.Printf("Error connecting to gateway: %v", err)

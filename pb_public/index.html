@@ -74,14 +74,14 @@
                 new Chart(document.getElementById('userChart'), {
                     type: 'bar',
                     data: {
-                        labels: users.map(d => d.userId), // TODO: Resolve real names?
+                        labels: users.map(d => d.userName || d.userId),
                         datasets: [{
                             label: 'Hours',
                             data: users.map(d => toHours(d.totalSeconds)),
                             backgroundColor: '#36A2EB'
                         }]
                     },
-									options: {
+                    options: {
                         maintainAspectRatio: false,
                         indexAxis: 'y'
                     }
