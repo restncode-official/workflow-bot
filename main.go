@@ -97,24 +97,21 @@ func main() {
 				return e.JSON(500, map[string]string{"error": err.Error()})
 			}
 
-			// Populate user names from Discord
-			if discordClient != nil {
-				for i := range stats {
-					if userID, err := parseSnowflake(stats[i].UserID); err == nil {
-						if user, err := discordClient.Rest().GetUser(userID); err == nil {
-							stats[i].UserName = user.Username
-						} else {
-							stats[i].UserName = stats[i].UserID // Fallback to ID
-						}
-					} else {
-						stats[i].UserName = stats[i].UserID // Fallback to ID
-					}
+			// Populate display names from Discord when the bot is connected
+			for i := range stats {
+				stats[i].UserName = stats[i].UserID
+				if discordClient == nil {
+					continue
 				}
-			} else {
-				// If Discord client is not available, use user IDs
-				for i := range stats {
-					stats[i].UserName = stats[i].UserID
+				userID, err := parseSnowflake(stats[i].UserID)
+				if err != nil {
+					continue
 				}
+				user, err := discordClient.Rest().GetUser(userID)
+				if err != nil {
+					continue
+				}
+				stats[i].UserName = user.EffectiveName()
 			}
 
 			return e.JSON(200, stats)
