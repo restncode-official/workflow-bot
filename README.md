@@ -24,10 +24,13 @@ A Discord bot integrated with PocketBase to track employee time spent in specifi
     ```
 
 2.  **Environment Variables**
-    Create a `.env` file or export the following variable:
+    Create a `.env` file or export:
 
     ```bash
     export DISCORD_TOKEN="your_discord_bot_token"
+    export WORKFLOW_ADMIN_PASSWORD="a-strong-shared-password"
+    # optional, defaults to "admin"
+    # export WORKFLOW_ADMIN_USER="admin"
     ```
 
 3.  **Run the application**
@@ -45,9 +48,10 @@ A Discord bot integrated with PocketBase to track employee time spent in specifi
 ## Configuration
 
 - **Break Channel**: Update `BreakChannelID` in `handlers.go` with your actual Discord Voice Channel ID for breaks.
-- **Projects**: Create records in the `projects` collection in PocketBase.
+- **Projects**: Manage from the dashboard **Projects / channels** panel (or PocketBase admin).
   - `channel_id`: The Discord Voice Channel ID to track.
   - `name`: Human-readable name (e.g., "Development", "Design").
+- **Admin auth**: Adding/removing projects uses HTTP Basic Auth (`WORKFLOW_ADMIN_USER` / `WORKFLOW_ADMIN_PASSWORD`). Analytics endpoints stay public.
 
 ## Usage
 

@@ -4,9 +4,27 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
+
+type ProjectInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ChannelID string `json:"channelId"`
+}
+
+type ChannelInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ProjectID string `json:"projectId,omitempty"`
+}
+
+type createProjectBody struct {
+	Name      string `json:"name"`
+	ChannelID string `json:"channelId"`
+}
 
 func registerWorkflowAPI(app core.App, e *core.ServeEvent) {
 	api := e.Router.Group("/api/workflow")
@@ -95,6 +113,129 @@ func registerWorkflowAPI(app core.App, e *core.ServeEvent) {
 		fillUserNames(stats)
 		return e.JSON(http.StatusOK, stats)
 	})
+
+	api.GET("/projects", func(e *core.RequestEvent) error {
+		records, err := app.FindAllRecords("projects")
+		if err != nil {
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		out := make([]ProjectInfo, 0, len(records))
+		for _, r := range records {
+			out = append(out, ProjectInfo{
+				ID:        r.Id,
+				Name:      r.GetString("name"),
+				ChannelID: r.GetString("channel_id"),
+			})
+		}
+		return e.JSON(http.StatusOK, out)
+	})
+
+	api.GET("/channels", func(e *core.RequestEvent) error {
+		channels := listVoiceChannels()
+		if channels == nil {
+			channels = []ChannelInfo{}
+		}
+
+		projects, _ := app.FindAllRecords("projects")
+		byChannel := map[string]string{}
+		for _, p := range projects {
+			byChannel[p.GetString("channel_id")] = p.Id
+		}
+		for i := range channels {
+			channels[i].ProjectID = byChannel[channels[i].ID]
+		}
+		return e.JSON(http.StatusOK, channels)
+	})
+
+	// Writes require HTTP Basic Auth (WORKFLOW_ADMIN_PASSWORD)
+	admin := api.Group("")
+	admin.BindFunc(requireBasicAuth)
+
+	admin.POST("/projects", func(e *core.RequestEvent) error {
+		var body createProjectBody
+		if err := e.BindBody(&body); err != nil {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+		}
+		body.Name = strings.TrimSpace(body.Name)
+		body.ChannelID = strings.TrimSpace(body.ChannelID)
+		if body.Name == "" || body.ChannelID == "" {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "name and channelId are required"})
+		}
+		if _, err := parseSnowflake(body.ChannelID); err != nil {
+			return e.JSON(http.StatusBadRequest, map[string]string{"error": "channelId must be a valid Discord snowflake"})
+		}
+
+		existing, _ := app.FindFirstRecordByFilter("projects", "channel_id = {:id}", dbx.Params{"id": body.ChannelID})
+		if existing != nil {
+			return e.JSON(http.StatusConflict, map[string]string{"error": "a project already uses this channel"})
+		}
+
+		collection, err := app.FindCollectionByNameOrId("projects")
+		if err != nil {
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		record := core.NewRecord(collection)
+		record.Set("name", body.Name)
+		record.Set("channel_id", body.ChannelID)
+		if err := app.Save(record); err != nil {
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+
+		return e.JSON(http.StatusCreated, ProjectInfo{
+			ID:        record.Id,
+			Name:      body.Name,
+			ChannelID: body.ChannelID,
+		})
+	})
+
+	admin.DELETE("/projects/{id}", func(e *core.RequestEvent) error {
+		id := e.Request.PathValue("id")
+		record, err := app.FindRecordById("projects", id)
+		if err != nil {
+			return e.JSON(http.StatusNotFound, map[string]string{"error": "project not found"})
+		}
+		if err := app.Delete(record); err != nil {
+			return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return e.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	})
+}
+
+func listVoiceChannels() []ChannelInfo {
+	if discordClient == nil {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	var out []ChannelInfo
+
+	add := func(ch discord.GuildChannel) {
+		if ch.Type() != discord.ChannelTypeGuildVoice && ch.Type() != discord.ChannelTypeGuildStageVoice {
+			return
+		}
+		id := ch.ID().String()
+		if seen[id] {
+			return
+		}
+		seen[id] = true
+		out = append(out, ChannelInfo{ID: id, Name: ch.Name()})
+	}
+
+	discordClient.Caches().ChannelsForEach(add)
+
+	if len(out) == 0 {
+		discordClient.Caches().GuildsForEach(func(g discord.Guild) {
+			channels, err := discordClient.Rest().GetGuildChannels(g.ID)
+			if err != nil {
+				return
+			}
+			for _, ch := range channels {
+				add(ch)
+			}
+		})
+	}
+
+	return out
 }
 
 // workLogFilter builds WHERE conditions from ?from=&to=&userId=

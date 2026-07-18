@@ -20,6 +20,7 @@
             --accent-soft: rgba(62, 207, 142, 0.15);
             --accent-hover: #2fb87a;
             --danger: #ff6b6b;
+            --danger-soft: rgba(255, 107, 107, 0.12);
             --radius: 16px;
             --input-bg: rgba(15, 20, 25, 0.7);
         }
@@ -149,7 +150,7 @@
             font-weight: 500;
         }
 
-        input[type="date"], select {
+        input[type="date"], input[type="text"], input[type="password"], select {
             appearance: none;
             background: var(--input-bg);
             border: 1px solid var(--border);
@@ -165,6 +166,87 @@
             outline: none;
             border-color: rgba(62, 207, 142, 0.45);
         }
+
+        .btn-ghost { background: transparent; }
+
+        .btn-danger {
+            background: transparent;
+            border-color: rgba(255, 107, 107, 0.35);
+            color: var(--danger);
+            padding: 0.35rem 0.65rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger:hover { background: var(--danger-soft); }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .panel-head h2 { margin-bottom: 0; }
+
+        .project-form {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            align-items: end;
+            margin-bottom: 1rem;
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 280px;
+            overflow: auto;
+        }
+
+        .project-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.75rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(15, 20, 25, 0.45);
+        }
+
+        .project-meta { min-width: 0; }
+
+        .project-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .project-channel {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 0.75rem;
+        }
+
+        .form-msg {
+            display: none;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .form-msg.is-error { color: var(--danger); display: block; }
+        .form-msg.is-ok { color: var(--accent); display: block; }
 
         .presets {
             display: flex;
@@ -270,6 +352,7 @@
         @media (max-width: 800px) {
             .summary { grid-template-columns: 1fr; }
             .grid { grid-template-columns: 1fr; }
+            .project-form { grid-template-columns: 1fr; }
             .chart-container, .panel.wide .chart-container { height: 240px; }
             .toolbar .field { min-width: 100%; }
         }
@@ -347,6 +430,40 @@
                     <canvas id="timelineChart"></canvas>
                 </div>
             </div>
+            <div class="panel wide">
+                <div class="panel-head">
+                    <h2>Projects / channels</h2>
+                    <button type="button" class="btn btn-ghost btn-sm" id="refreshProjects">Refresh</button>
+                </div>
+                <p class="form-msg" id="projectMsg"></p>
+                <form class="project-form" id="projectForm">
+                    <div class="field">
+                        <label for="channelSelect">Voice channel</label>
+                        <select id="channelSelect">
+                            <option value="">Select a channel…</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="channelIdManual">Or channel ID</label>
+                        <input type="text" id="channelIdManual" placeholder="Discord snowflake" inputmode="numeric">
+                    </div>
+                    <div class="field">
+                        <label for="projectName">Project name</label>
+                        <input type="text" id="projectName" placeholder="e.g. Design" required maxlength="80">
+                    </div>
+                    <div class="field">
+                        <label for="adminUser">Admin user</label>
+                        <input type="text" id="adminUser" value="admin" autocomplete="username">
+                    </div>
+                    <div class="field">
+                        <label for="adminPassword">Admin password</label>
+                        <input type="password" id="adminPassword" placeholder="WORKFLOW_ADMIN_PASSWORD" autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1; justify-self: start;">Add project</button>
+                </form>
+                <div class="project-list" id="projectList"></div>
+                <p class="hint">Add/remove requires HTTP Basic Auth. Set <code>WORKFLOW_ADMIN_PASSWORD</code> (user defaults to <code>admin</code>). Analytics stay public.</p>
+            </div>
         </div>
     </div>
 
@@ -386,8 +503,27 @@
             };
         }
 
-        async function fetchJSON(endpoint) {
-            const res = await fetch(endpoint);
+        const AUTH_KEY = 'workflowAdminAuth';
+
+        function loadSavedAuth() {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(AUTH_KEY) || 'null');
+                if (saved?.user) document.getElementById('adminUser').value = saved.user;
+                if (saved?.password) document.getElementById('adminPassword').value = saved.password;
+            } catch {}
+        }
+
+        function authHeader() {
+            const user = document.getElementById('adminUser').value.trim() || 'admin';
+            const password = document.getElementById('adminPassword').value;
+            if (!password) return {};
+            sessionStorage.setItem(AUTH_KEY, JSON.stringify({ user, password }));
+            return { Authorization: 'Basic ' + btoa(`${user}:${password}`) };
+        }
+
+        async function fetchJSON(endpoint, options = {}) {
+            const headers = { ...(options.headers || {}) };
+            const res = await fetch(endpoint, { ...options, headers });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
             return data;
@@ -397,6 +533,63 @@
             const el = document.getElementById('statusBadge');
             el.textContent = text;
             el.className = 'status' + (state ? ` is-${state}` : '');
+        }
+
+        function setProjectMsg(text, ok) {
+            const el = document.getElementById('projectMsg');
+            el.textContent = text || '';
+            el.className = 'form-msg' + (text ? (ok ? ' is-ok' : ' is-error') : '');
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function loadProjectsPanel() {
+            const [projects, channels] = await Promise.all([
+                fetchJSON('/api/workflow/projects'),
+                fetchJSON('/api/workflow/channels')
+            ]);
+
+            const select = document.getElementById('channelSelect');
+            const available = channels.filter(c => !c.projectId);
+            select.innerHTML = '<option value="">Select a channel…</option>';
+            available.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                opt.dataset.name = c.name;
+                select.appendChild(opt);
+            });
+            if (!available.length) {
+                const opt = document.createElement('option');
+                opt.disabled = true;
+                opt.textContent = channels.length
+                    ? 'All voice channels already linked'
+                    : 'No channels from Discord — paste an ID';
+                select.appendChild(opt);
+            }
+
+            const list = document.getElementById('projectList');
+            if (!projects.length) {
+                list.innerHTML = '<p class="empty" style="display:block;padding:1rem 0">No projects yet. Link a voice channel above.</p>';
+                return;
+            }
+
+            const channelName = Object.fromEntries(channels.map(c => [c.id, c.name]));
+            list.innerHTML = projects.map(p => `
+                <div class="project-row">
+                    <div class="project-meta">
+                        <div class="project-name">${escapeHtml(p.name)}</div>
+                        <div class="project-channel">${escapeHtml(channelName[p.channelId] || p.channelId)}</div>
+                    </div>
+                    <button type="button" class="btn btn-danger" data-delete="${escapeHtml(p.id)}">Remove</button>
+                </div>
+            `).join('');
         }
 
         function destroyCharts() {
@@ -588,15 +781,81 @@
             });
         });
 
+        document.getElementById('channelSelect').addEventListener('change', e => {
+            const opt = e.target.selectedOptions[0];
+            const nameInput = document.getElementById('projectName');
+            if (opt?.dataset?.name && !nameInput.value) nameInput.value = opt.dataset.name;
+            if (opt?.value) document.getElementById('channelIdManual').value = '';
+        });
+
+        document.getElementById('projectForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            setProjectMsg('');
+            const channelId = document.getElementById('channelSelect').value
+                || document.getElementById('channelIdManual').value.trim();
+            const name = document.getElementById('projectName').value.trim();
+            if (!channelId) {
+                setProjectMsg('Pick a channel or paste a channel ID', false);
+                return;
+            }
+            if (!document.getElementById('adminPassword').value) {
+                setProjectMsg('Admin password required', false);
+                return;
+            }
+            try {
+                await fetchJSON('/api/workflow/projects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeader()
+                    },
+                    body: JSON.stringify({ name, channelId })
+                });
+                document.getElementById('projectName').value = '';
+                document.getElementById('channelIdManual').value = '';
+                setProjectMsg('Project added', true);
+                await loadProjectsPanel();
+                await loadDashboard();
+            } catch (err) {
+                setProjectMsg(err.message, false);
+            }
+        });
+
+        document.getElementById('projectList').addEventListener('click', async e => {
+            const btn = e.target.closest('[data-delete]');
+            if (!btn) return;
+            if (!document.getElementById('adminPassword').value) {
+                setProjectMsg('Admin password required to remove projects', false);
+                return;
+            }
+            if (!confirm('Remove this project? Existing work logs stay in the database.')) return;
+            try {
+                await fetchJSON('/api/workflow/projects/' + btn.dataset.delete, {
+                    method: 'DELETE',
+                    headers: authHeader()
+                });
+                setProjectMsg('Project removed', true);
+                await loadProjectsPanel();
+                await loadDashboard();
+            } catch (err) {
+                setProjectMsg(err.message, false);
+            }
+        });
+
+        document.getElementById('refreshProjects').addEventListener('click', () => {
+            loadProjectsPanel().catch(err => setProjectMsg(err.message, false));
+        });
+
         (() => {
             const to = new Date();
             const from = new Date();
             from.setDate(to.getDate() - 29);
             document.getElementById('fromDate').value = isoDate(from);
             document.getElementById('toDate').value = isoDate(to);
+            loadSavedAuth();
         })();
 
-        Promise.all([loadUsers(), loadDashboard()]).catch(console.error);
+        Promise.all([loadUsers(), loadProjectsPanel(), loadDashboard()]).catch(console.error);
     </script>
 </body>
 </html>
