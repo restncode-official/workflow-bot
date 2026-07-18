@@ -18,13 +18,10 @@
             --muted: #8b9bb0;
             --accent: #3ecf8e;
             --accent-soft: rgba(62, 207, 142, 0.15);
-            --chart-1: #3ecf8e;
-            --chart-2: #4dabf7;
-            --chart-3: #ffd43b;
-            --chart-4: #ff8787;
-            --chart-5: #9775fa;
+            --accent-hover: #2fb87a;
             --danger: #ff6b6b;
             --radius: 16px;
+            --input-bg: rgba(15, 20, 25, 0.7);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,10 +37,7 @@
             padding: 2rem 1.25rem 3rem;
         }
 
-        .wrap {
-            max-width: 1120px;
-            margin: 0 auto;
-        }
+        .wrap { max-width: 1120px; margin: 0 auto; }
 
         header {
             display: flex;
@@ -51,16 +45,12 @@
             align-items: flex-end;
             justify-content: space-between;
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             padding-bottom: 1.5rem;
             border-bottom: 1px solid var(--border);
         }
 
-        .brand {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
+        .brand { display: flex; flex-direction: column; gap: 0.35rem; }
 
         .brand-mark {
             font-size: 0.75rem;
@@ -77,11 +67,7 @@
             line-height: 1.15;
         }
 
-        .subtitle {
-            color: var(--muted);
-            font-size: 0.95rem;
-            max-width: 28rem;
-        }
+        .subtitle { color: var(--muted); font-size: 0.95rem; max-width: 28rem; }
 
         .status {
             display: inline-flex;
@@ -133,11 +119,90 @@
             50% { opacity: 0.45; }
         }
 
+        .toolbar, .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(8px);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            align-items: flex-end;
+            padding: 1rem 1.15rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 140px;
+            flex: 1;
+        }
+
+        .field label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        input[type="date"], select {
+            appearance: none;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 0.55rem 0.75rem;
+            font: inherit;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: rgba(62, 207, 142, 0.45);
+        }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 0.55rem 0.9rem;
+            font: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .btn:hover { border-color: rgba(148, 163, 184, 0.35); }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: transparent;
+            color: #062016;
+        }
+
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8rem; }
+
         .summary {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
 
         .stat {
@@ -148,11 +213,7 @@
             backdrop-filter: blur(8px);
         }
 
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--muted);
-            margin-bottom: 0.4rem;
-        }
+        .stat-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; }
 
         .stat-value {
             font-family: 'JetBrains Mono', monospace;
@@ -174,17 +235,8 @@
             gap: 1.25rem;
         }
 
-        .panel {
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.35rem;
-            backdrop-filter: blur(8px);
-        }
-
-        .panel.wide {
-            grid-column: 1 / -1;
-        }
+        .panel { padding: 1.35rem; }
+        .panel.wide { grid-column: 1 / -1; }
 
         .panel h2 {
             font-size: 0.95rem;
@@ -193,15 +245,8 @@
             color: var(--text);
         }
 
-        .chart-container {
-            position: relative;
-            height: 280px;
-            width: 100%;
-        }
-
-        .panel.wide .chart-container {
-            height: 300px;
-        }
+        .chart-container { position: relative; height: 280px; width: 100%; }
+        .panel.wide .chart-container { height: 300px; }
 
         .error {
             display: none;
@@ -218,14 +263,15 @@
             display: none;
             text-align: center;
             color: var(--muted);
-            padding: 3rem 1rem;
+            padding: 2rem 1rem;
             font-size: 0.95rem;
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 800px) {
             .summary { grid-template-columns: 1fr; }
             .grid { grid-template-columns: 1fr; }
             .chart-container, .panel.wide .chart-container { height: 240px; }
+            .toolbar .field { min-width: 100%; }
         }
     </style>
 </head>
@@ -242,6 +288,29 @@
 
         <p class="error" id="errorMsg"></p>
 
+        <form class="toolbar" id="filterForm">
+            <div class="field">
+                <label for="fromDate">From</label>
+                <input type="date" id="fromDate" name="from">
+            </div>
+            <div class="field">
+                <label for="toDate">To</label>
+                <input type="date" id="toDate" name="to">
+            </div>
+            <div class="field">
+                <label for="userFilter">User</label>
+                <select id="userFilter" name="userId">
+                    <option value="">All users</option>
+                </select>
+            </div>
+            <div class="presets">
+                <button type="button" class="btn btn-sm" data-range="7">7d</button>
+                <button type="button" class="btn btn-sm" data-range="30">30d</button>
+                <button type="button" class="btn btn-sm" data-range="all">All</button>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </form>
+
         <div class="summary" id="summary">
             <div class="stat">
                 <div class="stat-label">Total hours</div>
@@ -257,7 +326,7 @@
             </div>
         </div>
 
-        <p class="empty" id="emptyMsg">No work logs yet. Join a project voice channel to start tracking.</p>
+        <p class="empty" id="emptyMsg">No work logs for this filter. Join a project voice channel to start tracking.</p>
 
         <div class="grid" id="charts">
             <div class="panel">
@@ -285,15 +354,43 @@
         const COLORS = ['#3ecf8e', '#4dabf7', '#ffd43b', '#ff8787', '#9775fa', '#63e6be', '#74c0fc'];
         const toHours = seconds => +(seconds / 3600).toFixed(2);
         const formatHours = h => Number(h).toLocaleString(undefined, { maximumFractionDigits: 1 });
+        const isoDate = d => d.toISOString().slice(0, 10);
 
         Chart.defaults.color = '#8b9bb0';
         Chart.defaults.borderColor = 'rgba(148, 163, 184, 0.12)';
         Chart.defaults.font.family = "'Outfit', sans-serif";
 
-        async function fetchData(endpoint) {
+        const charts = { project: null, user: null, timeline: null };
+        const tooltip = {
+            backgroundColor: '#1a222d',
+            titleColor: '#e8eef6',
+            bodyColor: '#8b9bb0',
+            borderColor: 'rgba(148, 163, 184, 0.2)',
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8
+        };
+
+        function qs(params) {
+            const q = new URLSearchParams();
+            Object.entries(params).forEach(([k, v]) => { if (v) q.set(k, v); });
+            const s = q.toString();
+            return s ? `?${s}` : '';
+        }
+
+        function currentFilters() {
+            return {
+                from: document.getElementById('fromDate').value,
+                to: document.getElementById('toDate').value,
+                userId: document.getElementById('userFilter').value
+            };
+        }
+
+        async function fetchJSON(endpoint) {
             const res = await fetch(endpoint);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            return data;
         }
 
         function setStatus(text, state) {
@@ -302,12 +399,36 @@
             el.className = 'status' + (state ? ` is-${state}` : '');
         }
 
+        function destroyCharts() {
+            Object.keys(charts).forEach(k => {
+                if (charts[k]) { charts[k].destroy(); charts[k] = null; }
+            });
+        }
+
+        async function loadUsers() {
+            const users = await fetchJSON('/api/workflow/users');
+            const select = document.getElementById('userFilter');
+            const current = select.value;
+            select.innerHTML = '<option value="">All users</option>';
+            users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.userId;
+                opt.textContent = u.userName || u.userId;
+                select.appendChild(opt);
+            });
+            if ([...select.options].some(o => o.value === current)) select.value = current;
+        }
+
         async function loadDashboard() {
+            setStatus('Loading', 'loading');
+            document.getElementById('errorMsg').style.display = 'none';
+
             try {
+                const q = qs(currentFilters());
                 const [projects, users, timeline] = await Promise.all([
-                    fetchData('/api/workflow/stats'),
-                    fetchData('/api/workflow/leaderboard'),
-                    fetchData('/api/workflow/timeline')
+                    fetchJSON('/api/workflow/stats' + q),
+                    fetchJSON('/api/workflow/leaderboard' + q),
+                    fetchJSON('/api/workflow/timeline' + q)
                 ]);
 
                 const totalHours = projects.reduce((sum, d) => sum + toHours(d.totalSeconds), 0);
@@ -316,22 +437,13 @@
                 document.getElementById('statProjects').textContent = projects.length;
                 document.getElementById('statUsers').textContent = users.length;
 
-                if (!projects.length && !users.length && !timeline.length) {
-                    document.getElementById('emptyMsg').style.display = 'block';
-                    document.getElementById('charts').style.opacity = '0.35';
-                }
+                const empty = !projects.length && !users.length && !timeline.length;
+                document.getElementById('emptyMsg').style.display = empty ? 'block' : 'none';
+                document.getElementById('charts').style.opacity = empty ? '0.55' : '1';
 
-                const tooltip = {
-                    backgroundColor: '#1a222d',
-                    titleColor: '#e8eef6',
-                    bodyColor: '#8b9bb0',
-                    borderColor: 'rgba(148, 163, 184, 0.2)',
-                    borderWidth: 1,
-                    padding: 10,
-                    cornerRadius: 8
-                };
+                destroyCharts();
 
-                new Chart(document.getElementById('projectChart'), {
+                charts.project = new Chart(document.getElementById('projectChart'), {
                     type: 'doughnut',
                     data: {
                         labels: projects.map(d => d.projectName || 'Unknown'),
@@ -352,15 +464,13 @@
                             },
                             tooltip: {
                                 ...tooltip,
-                                callbacks: {
-                                    label: ctx => ` ${formatHours(ctx.raw)} h`
-                                }
+                                callbacks: { label: ctx => ` ${formatHours(ctx.raw)} h` }
                             }
                         }
                     }
                 });
 
-                new Chart(document.getElementById('userChart'), {
+                charts.user = new Chart(document.getElementById('userChart'), {
                     type: 'bar',
                     data: {
                         labels: users.map(d => d.userName || d.userId),
@@ -380,9 +490,7 @@
                             legend: { display: false },
                             tooltip: {
                                 ...tooltip,
-                                callbacks: {
-                                    label: ctx => ` ${formatHours(ctx.raw)} h`
-                                }
+                                callbacks: { label: ctx => ` ${formatHours(ctx.raw)} h` }
                             }
                         },
                         scales: {
@@ -404,7 +512,7 @@
                     }
                 });
 
-                new Chart(document.getElementById('timelineChart'), {
+                charts.timeline = new Chart(document.getElementById('timelineChart'), {
                     type: 'line',
                     data: {
                         labels: timeline.map(d => {
@@ -431,9 +539,7 @@
                             legend: { display: false },
                             tooltip: {
                                 ...tooltip,
-                                callbacks: {
-                                    label: ctx => ` ${formatHours(ctx.raw)} h`
-                                }
+                                callbacks: { label: ctx => ` ${formatHours(ctx.raw)} h` }
                             }
                         },
                         scales: {
@@ -460,7 +566,37 @@
             }
         }
 
-        loadDashboard();
+        document.getElementById('filterForm').addEventListener('submit', e => {
+            e.preventDefault();
+            loadDashboard();
+        });
+
+        document.querySelectorAll('[data-range]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const range = btn.dataset.range;
+                const to = new Date();
+                const from = new Date();
+                if (range === 'all') {
+                    document.getElementById('fromDate').value = '';
+                    document.getElementById('toDate').value = '';
+                } else {
+                    from.setDate(to.getDate() - Number(range) + 1);
+                    document.getElementById('fromDate').value = isoDate(from);
+                    document.getElementById('toDate').value = isoDate(to);
+                }
+                loadDashboard();
+            });
+        });
+
+        (() => {
+            const to = new Date();
+            const from = new Date();
+            from.setDate(to.getDate() - 29);
+            document.getElementById('fromDate').value = isoDate(from);
+            document.getElementById('toDate').value = isoDate(to);
+        })();
+
+        Promise.all([loadUsers(), loadDashboard()]).catch(console.error);
     </script>
 </body>
 </html>

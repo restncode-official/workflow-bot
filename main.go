@@ -9,7 +9,6 @@ import (
 	"github.com/disgoorg/disgo/bot"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/joho/godotenv"
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -57,91 +56,11 @@ func main() {
 		// Serves static files from the provided public dir (if exists)
 		e.Router.GET("/{path...}", apis.Static(os.DirFS("./pb_public"), false))
 
-		// API Group
-		api := e.Router.Group("/api/workflow")
-
-		// 1. Project Stats
-		api.GET("/stats", func(e *core.RequestEvent) error {
-			var stats []ProjectStat
-			err := app.DB().Select(
-				"projects.name as projectName",
-				"SUM(strftime('%s', work_logs.end_time) - strftime('%s', work_logs.start_time)) as totalSeconds",
-			).
-				From("work_logs").
-				Join("LEFT JOIN", "projects", dbx.NewExp("projects.id = work_logs.project")).
-				Where(dbx.NewExp("work_logs.end_time != ''")).
-				GroupBy("projects.id").
-				All(&stats)
-
-			if err != nil {
-				return e.JSON(500, map[string]string{"error": err.Error()})
-			}
-			return e.JSON(200, stats)
-		})
-
-		// 2. Leaderboard (Top Users)
-		api.GET("/leaderboard", func(e *core.RequestEvent) error {
-			var stats []UserStat
-			err := app.DB().Select(
-				"user_id",
-				"SUM(strftime('%s', end_time) - strftime('%s', start_time)) as totalSeconds",
-			).
-				From("work_logs").
-				Where(dbx.NewExp("end_time != ''")).
-				GroupBy("user_id").
-				OrderBy("totalSeconds DESC").
-				Limit(10).
-				All(&stats)
-
-			if err != nil {
-				return e.JSON(500, map[string]string{"error": err.Error()})
-			}
-
-			// Populate display names from Discord when the bot is connected
-			for i := range stats {
-				stats[i].UserName = stats[i].UserID
-				if discordClient == nil {
-					continue
-				}
-				userID, err := parseSnowflake(stats[i].UserID)
-				if err != nil {
-					continue
-				}
-				user, err := discordClient.Rest().GetUser(userID)
-				if err != nil {
-					continue
-				}
-				stats[i].UserName = user.EffectiveName()
-			}
-
-			return e.JSON(200, stats)
-		})
-
-		// 3. Timeline (Daily Activity)
-		api.GET("/timeline", func(e *core.RequestEvent) error {
-			var stats []DailyStat
-			// SQLite numeric date: strftime('%Y-%m-%d', start_time)
-			err := app.DB().Select(
-				"strftime('%Y-%m-%d', start_time) as date",
-				"SUM(strftime('%s', end_time) - strftime('%s', start_time)) as totalSeconds",
-			).
-				From("work_logs").
-				Where(dbx.NewExp("end_time != ''")).
-				GroupBy("date").
-				OrderBy("date ASC").
-				Limit(30).
-				All(&stats)
-
-			if err != nil {
-				return e.JSON(500, map[string]string{"error": err.Error()})
-			}
-			return e.JSON(200, stats)
-		})
+		registerWorkflowAPI(app, e)
 
 		token := os.Getenv(DiscordTokenEnv)
 		if token == "" {
 			log.Println("Warning: DISCORD_TOKEN is not set. Bot will not start.")
-			// Continue serving PocketBase
 			return e.Next()
 		}
 
